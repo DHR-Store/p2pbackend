@@ -15,12 +15,21 @@ const server = app.listen(port, err => {
 
 const io = socketIO(server, { cors: true, origins: '*:*' });
 
-const mongoURI = process.env.DB_URI
+// ── MongoDB is OPTIONAL for Watch Together. ─────────────────────
+// The socket.io relay uses an in-memory `users` object and never
+// touches the DB. We only attempt a connection if DB_URI is set,
+// and we swallow the error so the server stays alive regardless.
+const mongoURI = process.env.DB_URI;
 
-mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
-        console.log("MongoDB connected.")
-    });
+if (mongoURI && typeof mongoURI === 'string' && mongoURI.trim().length > 0) {
+    mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('MongoDB connected.'))
+        .catch(err => {
+            console.warn('⚠ MongoDB connection failed (continuing without DB):', err.message);
+        });
+} else {
+    console.log('ℹ DB_URI not set — running without MongoDB (Watch Together still works).');
+}
 
 app.set('view engine', 'ejs');
 app.use('/public', express.static('public'))
